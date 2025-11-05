@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'core/constants/app_constants.dart';
+import 'package:provider/provider.dart';
+// import 'package:firebase_core/firebase_core.dart';
+import 'business_logic/providers/auth_provider.dart';
+import 'business_logic/providers/projects_provider.dart';
+import 'business_logic/providers/messages_provider.dart';
+import 'business_logic/providers/knowledge_provider.dart';
+import 'presentation/screens/login_screen.dart';
+import 'presentation/screens/projects_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  // Note: Firebase configuration files need to be added in Phase 2
+  // Initialize Firebase (will be enabled in Phase 4)
   // await Firebase.initializeApp();
 
   runApp(const ManusPersonalApp());
@@ -17,50 +22,97 @@ class ManusPersonalApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppConstants.appName,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectsProvider()),
+        ChangeNotifierProvider(create: (_) => MessagesProvider()),
+        ChangeNotifierProvider(create: (_) => KnowledgeProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Manus Personal App',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.blue,
+            brightness: Brightness.light,
+          ),
+          useMaterial3: true,
+          appBarTheme: const AppBarTheme(
+            centerTitle: false,
+            elevation: 0,
+          ),
+          cardTheme: CardTheme(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            filled: true,
+          ),
+        ),
+        home: const SplashScreen(),
       ),
-      home: const HomePage(),
     );
   }
 }
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.loadCurrentUser();
+
+    if (mounted) {
+      if (authProvider.isAuthenticated) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const ProjectsScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text(AppConstants.appName),
-      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'Welcome to Manus Personal App',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          children: [
+            const Icon(
+              Icons.chat_bubble_outline,
+              size: 100,
+              color: Colors.blue,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Text(
-              'Version ${AppConstants.appVersion}',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              'Manus Personal App',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
-            const SizedBox(height: 40),
-            const Text(
-              'Phase 2: Project Setup Complete ✅',
-              style: TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Next: Phase 3 - UI Development',
-              style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
-            ),
+            const SizedBox(height: 24),
+            const CircularProgressIndicator(),
           ],
         ),
       ),
