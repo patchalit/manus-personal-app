@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'business_logic/providers/auth_provider.dart';
 import 'business_logic/providers/projects_provider.dart';
 import 'business_logic/providers/messages_provider.dart';
@@ -11,8 +12,16 @@ import 'presentation/screens/projects_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase (will be enabled in Phase 4)
-  // await Firebase.initializeApp();
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('Firebase initialized successfully');
+  } catch (e) {
+    print('Firebase initialization error: $e');
+    // Continue without Firebase (offline mode)
+  }
 
   runApp(const ManusPersonalApp());
 }
@@ -24,7 +33,13 @@ class ManusPersonalApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final authProvider = AuthProvider();
+            authProvider.initializeAuth(); // Initialize Firebase auth listener
+            return authProvider;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => ProjectsProvider()),
         ChangeNotifierProvider(create: (_) => MessagesProvider()),
         ChangeNotifierProvider(create: (_) => KnowledgeProvider()),
@@ -76,7 +91,12 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthStatus() async {
+    // Wait a moment for Firebase to initialize
+    await Future.delayed(const Duration(seconds: 1));
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    // Try to load current user from local database (offline mode)
     await authProvider.loadCurrentUser();
 
     if (mounted) {
@@ -109,6 +129,13 @@ class _SplashScreenState extends State<SplashScreen> {
               'Manus Personal App',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Phase 4: Firebase & AI Integration',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey,
                   ),
             ),
             const SizedBox(height: 24),
